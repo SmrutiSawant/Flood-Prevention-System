@@ -2,6 +2,28 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Cloud, Droplets, MapPin, Calendar, Sprout, Mountain, Layers, Info } from 'lucide-react';
 
+
+const SOIL_MAP = {
+  clay: 0,
+  loam: 1,
+  sandy: 2
+};
+
+const SLOPE_MAP = {
+  flat: 0,
+  gentle: 1,
+  steep: 2
+};
+
+const CROP_MAP = {
+  rice: 0,
+  wheat: 1,
+  maize: 2,
+  sugarcane: 3,
+  cotton: 4,
+  vegetables: 5
+};
+
 const FloodPreventer = () => {
   const [step, setStep] = useState('input');
   const [loading, setLoading] = useState(false);
@@ -181,62 +203,69 @@ const FloodPreventer = () => {
     const today = new Date();
     const daysSinceSowing = Math.floor((today - sowDate) / (1000 * 60 * 60 * 24));
     
-    const riskFactors = {
-      rainfall: rainfall7Day > 100 ? 0.40 : 
-                rainfall7Day > 50 ? 0.30 : 
-                rainfall7Day > 20 ? 0.15 : 
-                rainfall7Day > 5 ? 0.05 : 0.01,
-      soil: data.soilType === 'clay' ? 0.15 : data.soilType === 'loam' ? 0.10 : 0.05,
-      slope: data.fieldSlope === 'flat' ? 0.10 : data.fieldSlope === 'gentle' ? 0.08 : 0.05,
-      moisture: soilMoisture > 70 ? 0.15 : 
-                soilMoisture > 50 ? 0.10 : 
-                soilMoisture > 30 ? 0.05 : 0.02
-    };
-    
-    console.log('Risk calculation:', { rainfall7Day, soilMoisture, riskFactors });
-    
-    const floodProbability = Math.min(
-      Object.values(riskFactors).reduce((a, b) => a + b, 0) * 100,
-      95
-    );
-    
-    const runoffRisk = data.fieldSlope === 'steep' ? 'High' : 
-                       data.fieldSlope === 'gentle' ? 'Medium' : 'Low';
-    
-    let cropStage = '';
-    let stageVulnerability = '';
-    if (daysSinceSowing < 15) {
-      cropStage = 'Seedling';
-      stageVulnerability = 'Critical';
-    } else if (daysSinceSowing < 45) {
-      cropStage = 'Vegetative';
-      stageVulnerability = 'High';
-    } else if (daysSinceSowing < 75) {
-      cropStage = 'Flowering';
-      stageVulnerability = 'Critical';
-    } else {
-      cropStage = 'Maturity';
-      stageVulnerability = 'Medium';
-    }
-    
-    setPredictions({
-      floodProbability: floodProbability.toFixed(1),
-      runoffRisk,
-      cropStage,
-      stageVulnerability,
-      rainfall7Day: rainfall7Day.toFixed(1),
-      recentRainfall: weatherData.rainfall3Day.toFixed(1),
-      soilMoisture: soilMoisture.toFixed(1),
-      maxPrecipProb: Math.round(weatherData.maxPrecipProb),
-      daysSinceSowing,
-      location: location.name,
-      dataSource: weatherData.source
-    });
-    
-    generateActions(floodProbability, runoffRisk, data, cropStage, daysSinceSowing, rainfall7Day);
-    
-    setLoading(false);
-    setStep('results');
+    // ⬇ AFTER weatherData is ready and daysSinceSowing is calculated
+
+const payload = {
+  rainfall_1d: weatherData.rainfall3Day / 3,
+  rainfall_3d: weatherData.rainfall3Day,
+  rainfall_7d: weatherData.rainfall7Day,
+  humidity: weatherData.avgHumidity,
+  soil_type: SOIL_MAP[data.soilType],
+  slope: SLOPE_MAP[data.fieldSlope],
+  crop_type: CROP_MAP[data.cropType],
+  days_since_sowing: daysSinceSowing
+};
+
+console.log("Sending to backend:", payload);
+
+const response = await fetch("http://127.0.0.1:8000/predict", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(payload)
+});
+
+const result = await response.json();
+console.log("ML response:", result);
+
+// Convert backend output to UI format
+const floodProb =
+  ((result.probabilities.HIGH || 0) +
+   (result.probabilities.SEVERE || 0)) * 100;
+
+setPredictions({
+  floodProbability: floodProb.toFixed(1),
+  runoffRisk: data.fieldSlope === 'steep' ? 'High' :
+              data.fieldSlope === 'gentle' ? 'Medium' : 'Low',
+  cropStage: daysSinceSowing < 15 ? 'Seedling' :
+             daysSinceSowing < 45 ? 'Vegetative' :
+             daysSinceSowing < 75 ? 'Flowering' : 'Maturity',
+  stageVulnerability: result.risk_label,
+  rainfall7Day: weatherData.rainfall7Day.toFixed(1),
+  recentRainfall: weatherData.rainfall3Day.toFixed(1),
+  soilMoisture: weatherData.soilMoisture.toFixed(1),
+  maxPrecipProb: Math.round(weatherData.maxPrecipProb),
+  daysSinceSowing,
+  location: location.name,
+  dataSource: "ML Model (FastAPI)"
+});
+
+
+generateActions(
+  floodProb,   
+  data.fieldSlope === 'steep' ? 'High' :
+  data.fieldSlope === 'gentle' ? 'Medium' : 'Low',
+  data,
+  predictions?.cropStage,
+  daysSinceSowing,
+  weatherData.rainfall7Day
+);
+
+
+setLoading(false);
+setStep("results");
+
   };
   
   const generateActions = (floodProb, runoffRisk, data, cropStage, days, rainfall) => {
