@@ -16,3 +16,10 @@ __pycache__/
 # IDE
 .vscode/
 .idea
+
+
+# Python virtual environment
+venv/
+backend/venv/
+__pycache__/
+*.pyc
