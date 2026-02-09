@@ -38,8 +38,8 @@ const FloodPreventer = () => {
   });
   const [predictions, setPredictions] = useState(null);
   const [actions, setActions] = useState([]);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiInput, setShowApiInput] = useState(true);
+  const apiKey = "d61a91e60de843f7bbc64235261001";
+
 
   const cityCoordinates = {
     'mumbai': { lat: 19.0760, lon: 72.8777, name: 'Mumbai' },
@@ -391,19 +391,13 @@ setStep("results");
   };
   
   const handleSubmit = () => {
-    if (formData.sowingDate && formData.location) {
-      if (!apiKey) {
-        const useDemo = confirm('No API key provided. Would you like to try DEMO MODE with simulated weather data?\n\nClick OK for demo mode, or Cancel to enter your API key.');
-        if (!useDemo) {
-          setShowApiInput(true);
-          return;
-        }
-      }
-      predictFloodRisk(formData);
-    } else {
-      alert('Please fill in sowing date and location');
-    }
-  };
+  if (formData.sowingDate && formData.location) {
+    predictFloodRisk(formData);
+  } else {
+    alert('Please fill in sowing date and location');
+  }
+};
+
   
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -455,44 +449,13 @@ setStep("results");
           </p>
         </div>
 
-        {showApiInput && (
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 mb-6 text-white">
-            <h3 className="text-lg font-bold mb-3">🔑 Setup: Get Your FREE Weather API Key</h3>
-            <ol className="text-sm space-y-2 mb-4 list-decimal list-inside">
-              <li>Go to <a href="https://www.weatherapi.com/signup.aspx" target="_blank" rel="noopener noreferrer" className="underline font-medium">weatherapi.com/signup</a></li>
-              <li>Sign up for FREE (1 million calls/month)</li>
-              <li>Copy your API key from the dashboard</li>
-              <li>Paste it below and start using!</li>
-            </ol>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Paste your WeatherAPI.com key here (or leave empty for demo mode)"
-                className="flex-1 p-3 rounded-lg text-gray-800"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-              />
-              <button
-                onClick={() => setShowApiInput(false)}
-                className="px-6 py-3 bg-white text-blue-600 rounded-lg font-medium hover:bg-gray-100"
-              >
-                Start
-              </button>
-            </div>
-            <p className="text-xs mt-2 opacity-90">✅ Completely free • No credit card required • Works without API key in demo mode</p>
-          </div>
-        )}
+        
 
-        {!showApiInput && step === 'input' && (
+        {step === 'input' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800">Field Information</h2>
-              <button
-                onClick={() => setShowApiInput(true)}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Change API Key
-              </button>
+              
             </div>
             
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex gap-3">
@@ -716,12 +679,7 @@ setStep("results");
               >
                 New Analysis
               </button>
-              <button
-                onClick={() => window.print()}
-                className="flex-1 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
-              >
-                Print/Save Actions
-              </button>
+              
             </div>
           </div>
         )}
